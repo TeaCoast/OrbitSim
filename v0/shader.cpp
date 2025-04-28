@@ -62,9 +62,6 @@ void _validateShaderCompilation(unsigned int shader, GLenum shader_type, int* er
     // get info log
     char* info_log = (char*)calloc(max_length, sizeof(char));
     glGetShaderInfoLog(shader, max_length, NULL, info_log);
-
-    std::cout << "length: " << std::to_string(max_length) << std::endl;
-    std::cout << info_log << std::endl;
     
     int error_shader_name = 0;
     std::string shader_name = _getShaderName(shader_type, &error_shader_name, error_log);

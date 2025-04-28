@@ -8,6 +8,8 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include "shader.cpp"
 #include "shaders.h"
@@ -16,6 +18,7 @@
 typedef struct {
     glm::vec3 pos;
     glm::vec3 col;
+    glm::vec2 tex_coord;
 } TriangleVector;
 #pragma pack(pop)
 
@@ -72,12 +75,42 @@ int main() {
 
     glUseProgram(shader_program);
 
+    // prepare textures
+    char* texture_paths[2] = {"v0/assets/container.jpg", "v0/assets/awesomeface.png"};
+    GLenum format[2] = {GL_RGB, GL_RGBA};
+    unsigned int textures[2];
+    glGenTextures(2, textures);
+    int widths[2], heights[2], nr_channels[2];
+    stbi_set_flip_vertically_on_load(true);
+    for (int i = 0; i < 2; i++) {
+        glBindTexture(GL_TEXTURE_2D, textures[i]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        unsigned char* data = stbi_load(texture_paths[i], &widths[i], &heights[i], &nr_channels[i], 0);
+        if (data) {
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, widths[i], heights[i], 0, format[i], GL_UNSIGNED_BYTE, data);
+            glGenerateMipmap(GL_TEXTURE_2D);
+        } else {
+            error_log += "Failed to load texture: ";
+            error_log += texture_paths[i];
+            error = FAILURE;
+            std::cerr << error_log << std::endl;
+            return error;
+        }
+        stbi_image_free(data);
+
+        glUniform1i(glGetUniformLocation(shader_program, (std::string("u_texture") + std::to_string(i + 1)).c_str()), i);
+    }
+
+
     // prepare buffers
     TriangleVector vertices[] = {
-        {{ 0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}},  // top right
-        {{ 0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},  // bottom right
-        {{-0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},  // bottom left
-        {{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}   // top left 
+        {{ 0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},  // top right
+        {{ 0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},  // bottom right
+        {{-0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},  // bottom left
+        {{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}   // top left 
     };
     
     unsigned int indices[] = {
@@ -100,8 +133,10 @@ int main() {
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(TriangleVector), (void*)offsetof(TriangleVector, pos));
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(TriangleVector), (void*)offsetof(TriangleVector, col));
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(TriangleVector), (void*)offsetof(TriangleVector, tex_coord));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(2);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
     glBindVertexArray(0); 
@@ -115,6 +150,10 @@ int main() {
         glClear(GL_COLOR_BUFFER_BIT);
 
         glUseProgram(shader_program);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textures[0]);
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, textures[1]);
         glBindVertexArray(VAO);
         // glDrawArrays(GL_TRIANGLES, 0, 3);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);

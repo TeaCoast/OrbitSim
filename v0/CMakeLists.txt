@@ -29,6 +29,6 @@ add_custom_command(
     TARGET always_run_target
     PRE_BUILD
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    COMMAND ${PYTHON_EXECUTABLE} shader_to_header.py
+    COMMAND ${PYTHON_EXECUTABLE} glsl_to_h.py
     VERBATIM
 )
