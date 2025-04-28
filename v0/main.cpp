@@ -7,10 +7,17 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/glm.hpp>
 
 #include "shader.cpp"
 #include "shaders.h"
 
+#pragma pack(push, 0)
+typedef struct {
+    glm::vec3 pos;
+    glm::vec3 col;
+} TriangleVector;
+#pragma pack(pop)
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -66,11 +73,11 @@ int main() {
     glUseProgram(shader_program);
 
     // prepare buffers
-    float vertices[] = {
-        0.5f,  0.5f, 0.0f,  // top right
-        0.5f, -0.5f, 0.0f,  // bottom right
-       -0.5f, -0.5f, 0.0f,  // bottom left
-       -0.5f,  0.5f, 0.0f   // top left 
+    TriangleVector vertices[] = {
+        {{ 0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}},  // top right
+        {{ 0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}},  // bottom right
+        {{-0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}},  // bottom left
+        {{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}}   // top left 
     };
     
     unsigned int indices[] = {
@@ -91,8 +98,10 @@ int main() {
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(TriangleVector), (void*)offsetof(TriangleVector, pos));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(TriangleVector), (void*)offsetof(TriangleVector, col));
     glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
     glBindVertexArray(0); 
@@ -104,11 +113,6 @@ int main() {
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
-
-        float time_value = glfwGetTime();
-        float green_value = sin(time_value) / 2.0f + 0.5f;
-        int vertex_color_location = glGetUniformLocation(shader_program, "u_color");
-        glUniform4f(vertex_color_location, 0.0f, green_value, 0.0f, 1.0f);
 
         glUseProgram(shader_program);
         glBindVertexArray(VAO);
