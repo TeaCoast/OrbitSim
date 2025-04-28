@@ -7,7 +7,11 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+ 
 #include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
@@ -76,7 +80,7 @@ int main() {
     glUseProgram(shader_program);
 
     // prepare textures
-    char* texture_paths[2] = {"v0/assets/container.jpg", "v0/assets/awesomeface.png"};
+    const char* texture_paths[2] = {"v0/assets/container.jpg", "v0/assets/awesomeface.png"};
     GLenum format[2] = {GL_RGB, GL_RGBA};
     unsigned int textures[2];
     glGenTextures(2, textures);
@@ -138,8 +142,11 @@ int main() {
     glEnableVertexAttribArray(1);
     glEnableVertexAttribArray(2);
 
+    unsigned int u_transform = glGetUniformLocation(shader_program, "u_transform");
+    glm::mat4 transform;
+
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
-    glBindVertexArray(0); 
+    glBindVertexArray(0);
 
     // run window
     while(!glfwWindowShouldClose(window))
@@ -155,6 +162,13 @@ int main() {
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, textures[1]);
         glBindVertexArray(VAO);
+
+        transform = glm::mat4(1.0f);
+        transform = glm::scale(transform, glm::vec3(0.5f, 0.5f, 0.5f));
+        transform = glm::rotate(transform, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
+
+        glUniformMatrix4fv(u_transform, 1, GL_FALSE, glm::value_ptr(transform));
+        
         // glDrawArrays(GL_TRIANGLES, 0, 3);
         glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
