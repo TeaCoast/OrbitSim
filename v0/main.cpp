@@ -3,12 +3,12 @@
 
 #include <iostream>
 #include <cstdint>
+#include <cmath>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
 #include "shader.cpp"
-
 #include "shaders.h"
 
 
@@ -104,6 +104,11 @@ int main() {
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        float time_value = glfwGetTime();
+        float green_value = sin(time_value) / 2.0f + 0.5f;
+        int vertex_color_location = glGetUniformLocation(shader_program, "u_color");
+        glUniform4f(vertex_color_location, 0.0f, green_value, 0.0f, 1.0f);
 
         glUseProgram(shader_program);
         glBindVertexArray(VAO);
