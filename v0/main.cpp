@@ -21,10 +21,21 @@
 #pragma pack(push, 0)
 typedef struct {
     glm::vec3 pos;
-    glm::vec3 col;
     glm::vec2 tex_coord;
-} TriangleVector;
+} TriangleVertex;
 #pragma pack(pop)
+
+typedef struct {
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+} TriangleUniforms;
+
+typedef struct {
+    int model;
+    int view;
+    int proj;
+} TriangleUniformIDs;
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
@@ -78,6 +89,7 @@ int main() {
     }
 
     glUseProgram(shader_program);
+    glEnable(GL_DEPTH_TEST);
 
     // prepare textures
     const char* texture_paths[2] = {"v0/assets/container.jpg", "v0/assets/awesomeface.png"};
@@ -108,43 +120,102 @@ int main() {
         glUniform1i(glGetUniformLocation(shader_program, (std::string("u_texture") + std::to_string(i + 1)).c_str()), i);
     }
 
-
     // prepare buffers
-    TriangleVector vertices[] = {
-        {{ 0.5f,  0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},  // top right
-        {{ 0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},  // bottom right
-        {{-0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},  // bottom left
-        {{-0.5f,  0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}}   // top left 
+    TriangleVertex vertices[] = {
+        {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f}},
+        {{ 0.5f, -0.5f, -0.5f}, {1.0f, 0.0f}},
+        {{ 0.5f,  0.5f, -0.5f}, {1.0f, 1.0f}},
+        {{ 0.5f,  0.5f, -0.5f}, {1.0f, 1.0f}},
+        {{-0.5f,  0.5f, -0.5f}, {0.0f, 1.0f}},
+        {{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f}},
+
+        {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f}},
+        {{ 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f}},
+        {{ 0.5f,  0.5f,  0.5f}, {1.0f, 1.0f}},
+        {{ 0.5f,  0.5f,  0.5f}, {1.0f, 1.0f}},
+        {{-0.5f,  0.5f,  0.5f}, {0.0f, 1.0f}},
+        {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f}},
+
+        {{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f}},
+        {{-0.5f,  0.5f, -0.5f}, {1.0f, 1.0f}},
+        {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+        {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+        {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f}},
+        {{-0.5f,  0.5f,  0.5f}, {1.0f, 0.0f}},
+
+        {{ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f}},
+        {{ 0.5f,  0.5f, -0.5f}, {1.0f, 1.0f}},
+        {{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+        {{ 0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+        {{ 0.5f, -0.5f,  0.5f}, {0.0f, 0.0f}},
+        {{ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f}},
+
+        {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+        {{ 0.5f, -0.5f, -0.5f}, {1.0f, 1.0f}},
+        {{ 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f}},
+        {{ 0.5f, -0.5f,  0.5f}, {1.0f, 0.0f}},
+        {{-0.5f, -0.5f,  0.5f}, {0.0f, 0.0f}},
+        {{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}},
+
+        {{-0.5f,  0.5f, -0.5f}, {0.0f, 1.0f}},
+        {{ 0.5f,  0.5f, -0.5f}, {1.0f, 1.0f}},
+        {{ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f}},
+        {{ 0.5f,  0.5f,  0.5f}, {1.0f, 0.0f}},
+        {{-0.5f,  0.5f,  0.5f}, {0.0f, 0.0f}},
+        {{-0.5f,  0.5f, -0.5f}, {0.0f, 1.0f}}
     };
-    
+
+    glm::vec3 cube_positions[] = {
+        glm::vec3( 0.0f,  0.0f,  0.0f), 
+        glm::vec3( 2.0f,  5.0f, -15.0f), 
+        glm::vec3(-1.5f, -2.2f, -2.5f),  
+        glm::vec3(-3.8f, -2.0f, -12.3f),  
+        glm::vec3( 2.4f, -0.4f, -3.5f),  
+        glm::vec3(-1.7f,  3.0f, -7.5f),  
+        glm::vec3( 1.3f, -2.0f, -2.5f),  
+        glm::vec3( 1.5f,  2.0f, -2.5f), 
+        glm::vec3( 1.5f,  0.2f, -1.5f), 
+        glm::vec3(-1.3f,  1.0f, -1.5f)  
+    };
+
+    /*
     unsigned int indices[] = {
         0, 1, 3,   // first triangle
         1, 2, 3    // second triangle
-    }; 
+    };
+    */
 
     unsigned int VBO, VAO, EBO;
     glGenVertexArrays(1, &VAO);
     glGenBuffers(1, &VBO);
-    glGenBuffers(1, &EBO);
+    //glGenBuffers(1, &EBO);
 
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
     
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    //glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(TriangleVector), (void*)offsetof(TriangleVector, pos));
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(TriangleVector), (void*)offsetof(TriangleVector, col));
-    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(TriangleVector), (void*)offsetof(TriangleVector, tex_coord));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(TriangleVertex), (void*)offsetof(TriangleVertex, pos));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(TriangleVertex), (void*)offsetof(TriangleVertex, tex_coord));
     glEnableVertexAttribArray(0);
     glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
 
-    unsigned int u_transform = glGetUniformLocation(shader_program, "u_transform");
-    glm::mat4 transform;
+    TriangleUniformIDs u_ID;
+    u_ID.model = glGetUniformLocation(shader_program, "u_model");
+    u_ID.view = glGetUniformLocation(shader_program, "u_view");
+    u_ID.proj = glGetUniformLocation(shader_program, "u_proj");
+    
+    TriangleUniforms u;
+    
+    u.view = glm::mat4(1.0f);
+    u.view = glm::translate(u.view, glm::vec3(0.0f, 0.0f, -3.0f));
 
+    u.proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    
+        
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
     glBindVertexArray(0);
 
@@ -154,7 +225,7 @@ int main() {
         processInput(window);
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(shader_program);
         glActiveTexture(GL_TEXTURE0);
@@ -162,15 +233,25 @@ int main() {
         glActiveTexture(GL_TEXTURE1);
         glBindTexture(GL_TEXTURE_2D, textures[1]);
         glBindVertexArray(VAO);
-
-        transform = glm::mat4(1.0f);
-        transform = glm::scale(transform, glm::vec3(0.5f, 0.5f, 0.5f));
-        transform = glm::rotate(transform, (float)glfwGetTime(), glm::vec3(0.0f, 0.0f, 1.0f));
-
-        glUniformMatrix4fv(u_transform, 1, GL_FALSE, glm::value_ptr(transform));
         
-        // glDrawArrays(GL_TRIANGLES, 0, 3);
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        //u.model = glm::mat4(1.0f);
+        //u.model = glm::rotate(u.model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+
+        glUniformMatrix4fv(u_ID.view, 1, GL_FALSE, glm::value_ptr(u.view));
+        glUniformMatrix4fv(u_ID.proj, 1, GL_FALSE, glm::value_ptr(u.proj));
+
+        for(unsigned int i = 0; i < sizeof(cube_positions)/sizeof(glm::vec3); i++)
+        {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, cube_positions[i]);
+            float angle = 20.0f * i; 
+            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            glUniformMatrix4fv(u_ID.model, 1, GL_FALSE, glm::value_ptr(model));
+        
+            glDrawArrays(GL_TRIANGLES, 0, 36);
+        }
+        //glDrawArrays(GL_TRIANGLES, 0, 36);
+        //glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         glfwSwapBuffers(window);
         glfwPollEvents();    
