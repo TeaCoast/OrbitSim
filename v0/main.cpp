@@ -209,16 +209,19 @@ int main() {
     u_ID.proj = glGetUniformLocation(shader_program, "u_proj");
     
     TriangleUniforms u;
-    
-    u.view = glm::mat4(1.0f);
-    u.view = glm::translate(u.view, glm::vec3(0.0f, 0.0f, -3.0f));
-
     u.proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
     
-        
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
     glBindVertexArray(0);
 
+    
+    // camera
+    glm::vec3 camera_pos;
+    glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+    float radius = 6.0f;
+    
     // run window
     while(!glfwWindowShouldClose(window))
     {
@@ -237,6 +240,15 @@ int main() {
         //u.model = glm::mat4(1.0f);
         //u.model = glm::rotate(u.model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
+        camera_pos.x = sin(glfwGetTime()) * radius;
+        camera_pos.y = 0;
+        camera_pos.z = cos(glfwGetTime()) * radius;
+        u.view = glm::lookAt(
+            camera_pos, 
+      		camera_target, 
+      		up
+        );
+        
         glUniformMatrix4fv(u_ID.view, 1, GL_FALSE, glm::value_ptr(u.view));
         glUniformMatrix4fv(u_ID.proj, 1, GL_FALSE, glm::value_ptr(u.proj));
 
@@ -246,6 +258,10 @@ int main() {
             model = glm::translate(model, cube_positions[i]);
             float angle = 20.0f * i; 
             model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
+            if (i % 3 == 0) {
+                model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
+                
+            }
             glUniformMatrix4fv(u_ID.model, 1, GL_FALSE, glm::value_ptr(model));
         
             glDrawArrays(GL_TRIANGLES, 0, 36);
