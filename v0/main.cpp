@@ -37,16 +37,59 @@ typedef struct {
     int proj;
 } TriangleUniformIDs;
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void framebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
 } 
+
+// camera
+glm::vec3 camera_pos = glm::vec3(0.0f, 0.0f, 3.0f);
+glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
+
+glm::vec3 direction;
+float yaw = -90.0f;
+float pitch = 0.f;
+
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
 
 void processInput(GLFWwindow *window)
 {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+    const float camera_speed = 2.5f * deltaTime; // adjust accordingly
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+        camera_pos += camera_speed * camera_front;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+        camera_pos -= camera_speed * camera_front;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+        camera_pos -= glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+        camera_pos += glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
 }
+
+float lastX = 400, lastY = 300;
+void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
+    float xoffset = xpos - lastX;
+    float yoffset = lastY - ypos;
+    lastX = xpos;
+    lastY = ypos;
+    
+    const float sensitivity = 0.1f;
+    xoffset *= sensitivity;
+    yoffset *= sensitivity;
+
+    yaw   += xoffset;
+    pitch += yoffset; 
+    
+    if(pitch > 89.0f)
+      pitch =  89.0f;
+    if(pitch < -89.0f)
+      pitch = -89.0f;
+
+    
+};
 
 int main() {
     int error = 0;
@@ -79,8 +122,10 @@ int main() {
         return error;
     }  
 
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback); 
-
+    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback); 
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, mouseCallback);
+    
     // prepare shaders
     unsigned int shader_program = createShaderProgram(triangle_vert_text, triangle_frag_text, &error, &error_log);
     if (error == FAILURE) {
@@ -213,18 +258,20 @@ int main() {
     
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
     glBindVertexArray(0);
-
-    
-    // camera
-    glm::vec3 camera_pos;
-    glm::vec3 camera_target = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
-
-    float radius = 6.0f;
     
     // run window
     while(!glfwWindowShouldClose(window))
     {
+        
+        float currentFrame = glfwGetTime();
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
+        direction.y = sin(glm::radians(pitch));
+        direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
+        camera_front = glm::normalize(direction);
+        
         processInput(window);
 
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
@@ -240,14 +287,10 @@ int main() {
         //u.model = glm::mat4(1.0f);
         //u.model = glm::rotate(u.model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
 
-        camera_pos.x = sin(glfwGetTime()) * radius;
-        camera_pos.y = 0;
-        camera_pos.z = cos(glfwGetTime()) * radius;
-        u.view = glm::lookAt(
-            camera_pos, 
-      		camera_target, 
-      		up
-        );
+        //camera_pos.x = sin(glfwGetTime()) * radius;
+        //camera_pos.y = 0;
+        //camera_pos.z = cos(glfwGetTime()) * radius;
+        u.view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
         
         glUniformMatrix4fv(u_ID.view, 1, GL_FALSE, glm::value_ptr(u.view));
         glUniformMatrix4fv(u_ID.proj, 1, GL_FALSE, glm::value_ptr(u.proj));
