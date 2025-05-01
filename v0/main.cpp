@@ -16,6 +16,7 @@
 #include <stb_image.h>
 
 #include "shader.cpp"
+#include "camera.cpp"
 #include "shaders.h"
 
 #pragma pack(push, 0)
@@ -37,59 +38,27 @@ typedef struct {
     int proj;
 } TriangleUniformIDs;
 
-void framebufferSizeCallback(GLFWwindow* window, int width, int height)
+
+int width = 800;
+int height = 600;
+void framebufferSizeCallback(GLFWwindow* window, int new_width, int new_height)
 {
+    width = new_width;
+    height = new_height;
     glViewport(0, 0, width, height);
 } 
 
 // camera
-glm::vec3 camera_pos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
+float delta_time = 0.0f;
+float last_frame = 0.0f;
 
-glm::vec3 direction;
-float yaw = -90.0f;
-float pitch = 0.f;
-
-float deltaTime = 0.0f;
-float lastFrame = 0.0f;
-
+Camera camera = Camera(glm::vec3(0.0f, 1.0f, 3.0f));
 void processInput(GLFWwindow *window)
 {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
-    const float camera_speed = 2.5f * deltaTime; // adjust accordingly
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camera_pos += camera_speed * camera_front;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camera_pos -= camera_speed * camera_front;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camera_pos -= glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camera_pos += glm::normalize(glm::cross(camera_front, camera_up)) * camera_speed;
+    camera.processInput(window, delta_time);
 }
-
-float lastX = 400, lastY = 300;
-void mouseCallback(GLFWwindow* window, double xpos, double ypos) {
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
-    lastX = xpos;
-    lastY = ypos;
-    
-    const float sensitivity = 0.1f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw   += xoffset;
-    pitch += yoffset; 
-    
-    if(pitch > 89.0f)
-      pitch =  89.0f;
-    if(pitch < -89.0f)
-      pitch = -89.0f;
-
-    
-};
 
 int main() {
     int error = 0;
@@ -102,7 +71,7 @@ int main() {
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "LearnOpenGL", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(width, height, "LearnOpenGL", NULL, NULL);
     if (window == NULL)
     {
         error_log += "Failed to create GLFW window";
@@ -122,9 +91,10 @@ int main() {
         return error;
     }  
 
-    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback); 
+    glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+    glfwMaximizeWindow(window);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    glfwSetCursorPosCallback(window, mouseCallback);
+    //glfwSetCursorPosCallback(window, mouseCallback);
     
     // prepare shaders
     unsigned int shader_program = createShaderProgram(triangle_vert_text, triangle_frag_text, &error, &error_log);
@@ -164,6 +134,7 @@ int main() {
 
         glUniform1i(glGetUniformLocation(shader_program, (std::string("u_texture") + std::to_string(i + 1)).c_str()), i);
     }
+
 
     // prepare buffers
     TriangleVertex vertices[] = {
@@ -254,7 +225,6 @@ int main() {
     u_ID.proj = glGetUniformLocation(shader_program, "u_proj");
     
     TriangleUniforms u;
-    u.proj = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
     
     glBindBuffer(GL_ARRAY_BUFFER, 0); 
     glBindVertexArray(0);
@@ -263,14 +233,9 @@ int main() {
     while(!glfwWindowShouldClose(window))
     {
         
-        float currentFrame = glfwGetTime();
-        deltaTime = currentFrame - lastFrame;
-        lastFrame = currentFrame;
-
-        direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-        direction.y = sin(glm::radians(pitch));
-        direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-        camera_front = glm::normalize(direction);
+        float current_frame = glfwGetTime();
+        delta_time = current_frame - last_frame;
+        last_frame = current_frame;
         
         processInput(window);
 
@@ -290,8 +255,9 @@ int main() {
         //camera_pos.x = sin(glfwGetTime()) * radius;
         //camera_pos.y = 0;
         //camera_pos.z = cos(glfwGetTime()) * radius;
-        u.view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
-        
+        u.proj = glm::perspective(glm::radians(45.0f), (float)width / (float)height, 0.1f, 100.0f);
+        u.view = camera.getView();
+            
         glUniformMatrix4fv(u_ID.view, 1, GL_FALSE, glm::value_ptr(u.view));
         glUniformMatrix4fv(u_ID.proj, 1, GL_FALSE, glm::value_ptr(u.proj));
 
@@ -303,7 +269,6 @@ int main() {
             model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
             if (i % 3 == 0) {
                 model = glm::rotate(model, (float)glfwGetTime() * glm::radians(50.0f), glm::vec3(0.5f, 1.0f, 0.0f));
-                
             }
             glUniformMatrix4fv(u_ID.model, 1, GL_FALSE, glm::value_ptr(model));
         
