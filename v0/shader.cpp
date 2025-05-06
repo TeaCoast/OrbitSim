@@ -110,7 +110,7 @@ unsigned int loadShader(const char* shader_content, GLenum shader_type, int* err
 
 unsigned int loadShaderFile(std::string filepath, GLenum shader_type, int* error, std::string* error_log) {
     std::string shader_content = readFile(filepath, error, error_log);
-    if (*error == FAILURE) {
+    if (*error != SUCCESS) {
         return 0;
     }
     unsigned int shader = loadShader(shader_content.c_str(), shader_type, error, error_log);
@@ -138,12 +138,12 @@ unsigned int createShaderProgram(const char* vert_source, const char* frag_sourc
     unsigned int shaders[2];
     shaders[0] = loadShader(vert_source, GL_VERTEX_SHADER, error, error_log);
     shaders[1] = loadShader(frag_source, GL_FRAGMENT_SHADER, error, error_log);
-    if (*error == FAILURE) {
+    if (*error != SUCCESS) {
         return 0;
     }
     
     unsigned int shader_program = linkShaders(shaders, 2, error, error_log);
-    if (*error == FAILURE) {
+    if (*error != SUCCESS) {
         return 0;
     }
 
@@ -154,12 +154,12 @@ unsigned int createShaderProgramFromFiles(const char* vert_path, const char* fra
     unsigned int shaders[2];
     shaders[0] = loadShaderFile(vert_path, GL_VERTEX_SHADER, error, error_log);
     shaders[1] = loadShaderFile(frag_path, GL_FRAGMENT_SHADER, error, error_log);
-    if (*error == FAILURE) {
+    if (*error != SUCCESS) {
         return 0;
     }
     
     unsigned int shader_program = linkShaders(shaders, 2, error, error_log);
-    if (*error == FAILURE) {
+    if (*error != SUCCESS) {
         return 0;
     }
 
@@ -168,9 +168,8 @@ unsigned int createShaderProgramFromFiles(const char* vert_path, const char* fra
 
 // testing -----------------------------------------------------------------------------------------------------------------
 
-#include "shaders.h"
-
 #ifdef SHADER_MAIN_CPP
+#include "shader_source.h"
 int main() {
     int error = 0;
     std::string error_log = "";
@@ -203,7 +202,7 @@ int main() {
     }
     
     unsigned int shader_program = createShaderProgram(triangle_vert_text, triangle_frag_text, &error, &error_log);
-    if (error == FAILURE) {
+    if (error != SUCCESS) {
         std::cerr << "Error creating shader program for triangle shader: \n\n" << error_log << std::endl; 
         return error;
     }

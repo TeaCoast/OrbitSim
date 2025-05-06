@@ -1,13 +1,16 @@
 import os
 
-print("shader_to_header.h: Converting shader files into text constants in shaders.h header file")
+output_name = "shader_source.h"
+output_define_name = output_name.replace('.', '_').upper()
 
-if not os.path.exists("shaders.h"):
-    with open("shaders.h", 'x') as shaders_h:
+print(f"glsl_to_h.py: Converting shader files into text constants in {output_name} header file")
+
+if not os.path.exists(output_name):
+    with open(output_name, 'x') as output:
         pass
 
-with open("shaders.h", 'w') as shaders_h:
-    shaders_h.write("#ifndef SHADERS_H\n#define SHADERS_H\n")
+with open(output_name, 'w') as output:
+    output.write(f"#ifndef {output_define_name}\n#define {output_define_name}\n")
     shader_dirs = os.listdir("./shaders")
     for directory in shader_dirs:
         shaders = os.listdir("./shaders/" + directory)
@@ -16,6 +19,6 @@ with open("shaders.h", 'w') as shaders_h:
             with open("./shaders/" + directory + '/' + shader, 'r') as shader_file:
                 text = shader_file.read()
             raw_text = text.replace('\n', '\\n')
-            shaders_h.write("const char* " + name + "_text = \"" + raw_text + "\";\n")
-    shaders_h.write("#endif\n")
-    shaders_h.truncate()
+            output.write("const char* " + name + "_text = \"" + raw_text + "\";\n")
+    output.write("#endif\n")
+    output.truncate()
